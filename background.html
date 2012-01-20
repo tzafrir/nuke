@@ -1,0 +1,36 @@
+<script type="text/javascript" src="/libs/jquery-1.6.3.min.js"></script>
+<script type="text/javascript" src="/jsapi/jsapi_helper.js"></script>
+<script type="text/javascript" src="/jsapi/jsapi_abstract_database.js"></script>
+<script type="text/javascript" src="/jsapi/jsapi_database.js"></script>
+<script type="text/javascript" src="/jsapi/jsapi_for_google_plus.js"></script>
+<script type="text/javascript" src="/content_script_api_bridge.js"></script>
+<script type="text/javascript" src="/background_controller.js"></script>
+<script>
+  var plus = new GooglePlusAPI();
+  var init = false;
+  plus.init(function(ok) {
+    init = ok;
+  });
+  plus.refreshInfo();
+</script>
+<script>
+
+function onRequest(request, sender, callback) {
+    if (request.name == 'block') {
+        plus.modifyBlocked(function(ok) {
+          callback({'ok': ok});
+        }, [request.userId], true);
+    }
+    if (request.name == 'getId') {
+        var info = plus.getInfo();
+        if (info) {
+            callback({'id': plus.getInfo().id});
+        } else {
+            callback({})
+        }
+    }
+};
+
+// Wire up the listener.
+chrome.extension.onRequest.addListener(onRequest);
+</script>
