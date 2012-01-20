@@ -157,7 +157,7 @@ function processFooters(first) {
 
             if (profile.profileName == oid) {
                 // Don't nuke yourself.
-                //continue;
+                continue;
             }
              
             if (button.id.match(/#/)) {
