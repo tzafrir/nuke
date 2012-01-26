@@ -159,7 +159,13 @@ function processFooters(first) {
                 // Don't nuke yourself.
                 continue;
             }
-             
+
+            var x = parent.querySelector(DELETE_COMMENT_SELECTOR);
+            if (!x) {
+                // There's no delete button - can't nuke what we can't delete...
+                continue;
+            }
+
             if (button.id.match(/#/)) {
                 // Nuke.
                 var newButton = document.createElement('a');
