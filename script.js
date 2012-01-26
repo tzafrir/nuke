@@ -81,7 +81,7 @@ function nuke(buttonFromComment, userId) {
             if (response.ok) {
                 nukedText.innerHTML = "Nuked!";
             } else {
-                nukedText.innerHTML = "Failed to nuked :(";
+                nukedText.innerHTML = "Failed to nuke :(";
             }
         });
         parent.removeEventListener('DOMSubtreeModified', f);
