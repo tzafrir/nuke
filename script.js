@@ -69,8 +69,6 @@ function simulateClick(element) {
 }
 
 function nuke(buttonFromComment, userId) {
-    buttonFromComment.innerHTML = "Nuking...";
-
     var parent = buttonFromComment.parentElement.parentElement;
     var x = parent.querySelector(DELETE_COMMENT_SELECTOR);
     var f = function(event) {
@@ -81,10 +79,8 @@ function nuke(buttonFromComment, userId) {
         parent.appendChild(nukedText);
         chrome.extension.sendRequest({'name' : 'block', 'userId': userId}, function(response) {
             if (response.ok) {
-                buttonFromComment.innerHTML = "Nuked!";
                 nukedText.innerHTML = "Nuked!";
             } else {
-                buttonFromComment.innerHTML = "Failed to nuke :(";
                 nukedText.innerHTML = "Failed to nuked :(";
             }
         });
