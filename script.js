@@ -1,3 +1,11 @@
+/**
+ * This file was originally written by Matt Mastracci as part of Relpies and More for Google+:
+ *   https://chrome.google.com/webstore/detail/fgmhgfecnmeljhchgcjlfldjiepcfpea
+ *   https://plus.google.com/u/0/115459243651688775505/posts
+ *
+ * Modified by Tzafrir Rehan to add nuke-specific logic, and remove unused code.
+ */
+
 var RESCAN_PERIOD = 1000;
 var RESCAN_PERIOD_IDLE = 5000;
 var YIELD = 10;
