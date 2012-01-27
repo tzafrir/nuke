@@ -18,32 +18,17 @@ var cachedCount = -1;
 var settings;
 
 // Forgive us, gods of programming
-var COMMENT_CLASSNAME = "a-j fd";
-var SHARE_CLASSNAME = "a-j Oh";
-var POST_TEXT_CLASSNAME = "vg";
-var POST_NAME_CLASSNAME = "yn Hf cg";
-var COMMENT_NAME_CLASSNAME = "yn Hf ox";
-var MUTE_CLASSNAME = "c-G-j a-H c-G-j-Bc Zi cf";
-var SELECTED_POST_CLASSNAME = "md gi rh";
-var ORIGINALLY_SHARED_CLASSNAME = "Ux";
-var SAVE_POST_CLASSNAME = "a-l-k e-b f-G-ef f-G-ef-i e-b-G";
-var SHARE_POST_CLASSNAME = "a-l-k e-b e-b-na";
+var COMMENT_CLASSNAME = "c-C UuCFYe";
+var POST_TEXT_CLASSNAME = "rXnUBd";
+var POST_NAME_CLASSNAME = "cs2K7c qk is";
+var COMMENT_NAME_CLASSNAME = "cs2K7c qk xs";
 
-var DELETED_COMMENT_CLASSNAME = "yj-ia";
-var OWN_NAME_NOID_ID = "gbi4t";
+var DELETED_COMMENT_CLASSNAME = "ld-L";
 
 // Major DRY violation here...
 var COMMENT_SELECTOR = "." + COMMENT_CLASSNAME.replace(/ /g, ".");
-var SHARE_SELECTOR = "." + SHARE_CLASSNAME.replace(/ /g, ".");
-var SELECTED_POST_SELECTOR = "." + SELECTED_POST_CLASSNAME.replace(/ /g, ".");
-var MUTE_SELECTOR = "." + MUTE_CLASSNAME.replace(/ /g, ".");
 var PROFILE_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".") + ", ." + COMMENT_NAME_CLASSNAME.replace(/ /g, ".");
 var POST_TEXT_SELECTOR = "." + POST_TEXT_CLASSNAME.replace(/ /g, ".");
-var ORIGINALLY_SHARED_SELECTOR = "." + ORIGINALLY_SHARED_CLASSNAME.replace(/ /g, ".");
-var SAVE_POST_SELECTOR = "." + SAVE_POST_CLASSNAME.replace(/ /g, ".");
-var SHARE_POST_SELECTOR = "." + SHARE_POST_CLASSNAME.replace(/ /g, ".");
-
-var OWN_NAME_SELECTOR = ".c-Cc-XBo9Cc a";
 var POST_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".");
 
 var DELETE_COMMENT_SELECTOR = ".OVu7Pd";
