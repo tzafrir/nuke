@@ -12,22 +12,45 @@
     init = ok;
   });
   plus.refreshInfo();
+
+  var _gaq = _gaq || [];
+  _gaq.push(['_setAccount', 'UA-27041781-3']);
+  _gaq.push(['_trackPageview']);
+
+  (function() {
+   var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+   ga.src = 'https://ssl.google-analytics.com/ga.js';
+   var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+  })();
+
+  function trackNukeClick() {
+    _gaq.push(['_trackEvent', 'Nuke', 'Clicked']);
+  }
+
+  function trackBlockSuccess(ok) {
+    var s = ok ? 'Success' : 'Failure';
+    _gaq.push(['_trackEvent', 'Blocking', s]);
+  }
+
 </script>
 <script>
 
 function onRequest(request, sender, callback) {
-    if (request.name == 'block') {
+    var n = request.name;
+    if (n == 'block') {
         plus.modifyBlocked(function(ok) {
           callback({'ok': ok});
+          trackBlockSuccess(ok);
         }, [request.userId], true);
-    }
-    if (request.name == 'getId') {
+    } else if (n == 'getId') {
         var info = plus.getInfo();
         if (info) {
             callback({'id': plus.getInfo().id});
         } else {
             callback({})
         }
+    } else if (n == 'nukeClick') {
+      trackNukeClick();
     }
 };
 

@@ -62,6 +62,7 @@ function simulateClick(element) {
 }
 
 function nuke(buttonFromComment, userId) {
+    chrome.extension.sendRequest({'name': 'nukeClick'}, function() {});
     var parent = buttonFromComment.parentElement.parentElement;
     var x = parent.querySelector(DELETE_COMMENT_SELECTOR);
     var f = function(event) {
@@ -70,7 +71,7 @@ function nuke(buttonFromComment, userId) {
         nukedText.innerHTML = "Nuking...";
         nukedText.style.cssText = "color: red; padding: 1px";
         parent.appendChild(nukedText);
-        chrome.extension.sendRequest({'name' : 'block', 'userId': userId}, function(response) {
+        chrome.extension.sendRequest({'name': 'block', 'userId': userId}, function(response) {
             if (response.ok) {
                 nukedText.innerHTML = "Nuked!";
             } else {
