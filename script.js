@@ -31,8 +31,6 @@ var PROFILE_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".") + ", ."
 var POST_TEXT_SELECTOR = "." + POST_TEXT_CLASSNAME.replace(/ /g, ".");
 var POST_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".");
 
-var DELETE_COMMENT_SELECTOR = ".OVu7Pd";
-
 var NUKE_OVERLAY_ID = 'tz_nuke_overlay';
 
 var selfId;
@@ -200,12 +198,6 @@ function processFooters(first) {
 
             if (profile.profileName == oid) {
                 // Don't nuke yourself.
-                continue;
-            }
-
-            var x = parent.querySelector(DELETE_COMMENT_SELECTOR);
-            if (!x) {
-                // There's no delete button - can't nuke what we can't delete...
                 continue;
             }
 
