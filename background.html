@@ -27,6 +27,16 @@
     _gaq.push(['_trackEvent', 'Nuke', 'Clicked']);
   }
 
+  function trackReportSuccess(ok) {
+    var s = ok ? 'Success' : 'Failure';
+    _gaq.push(['_trackEvent', 'Reporting', s]);
+  }
+
+  function trackDeleteSuccess(ok) {
+    var s = ok ? 'Success' : 'Failure';
+    _gaq.push(['_trackEvent', 'Deleting', s]);
+  }
+
   function trackBlockSuccess(ok) {
     var s = ok ? 'Success' : 'Failure';
     _gaq.push(['_trackEvent', 'Blocking', s]);
@@ -37,6 +47,7 @@
 
 function onRequest(request, sender, callback) {
     var n = request.name;
+    ok = true;
     if (n == 'block') {
         plus.modifyBlocked(function(ok) {
           callback({'ok': ok});
@@ -50,7 +61,19 @@ function onRequest(request, sender, callback) {
             callback({})
         }
     } else if (n == 'nukeClick') {
-      trackNukeClick();
+        trackNukeClick();
+    } else if (n == 'report') {
+      console.log('will report: ' + request.userId);
+        plus.reportProfile(function(ok) {
+          callback({'ok': ok});
+          trackReportSuccess(ok);
+        }, request.userId);
+    } else if (n == 'deleteComment') {
+        console.log('will del: '+request.commentId);
+        plus.deleteComment(function(ok) {
+          callback({'ok': ok});
+          trackDeleteSuccess(ok);
+        }, request.commentId);
     }
 };
 
