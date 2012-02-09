@@ -36,6 +36,7 @@ var DELETE_COMMENT_SELECTOR = ".OVu7Pd";
 var NUKE_OVERLAY_ID = 'tz_nuke_overlay';
 
 var selfId;
+var isHydrogen = false;
 
 var commentId;
 var nukedPersonId;
@@ -78,7 +79,11 @@ function nuke(buttonFromComment, userId) {
     parent.appendChild(nukedTextDiv);
     commentDiv = buttonFromComment.parentElement.parentElement.parentElement.parentElement;
 
-    document.querySelector("#" + NUKE_OVERLAY_ID).style.display = "block";
+    if (isHydrogen) {
+      nukeBlockReport();
+    } else {
+      document.querySelector("#" + NUKE_OVERLAY_ID).style.display = "block";
+    }
 }
 
 function block() {
@@ -110,7 +115,9 @@ function deleteComment() {
 }
 
 function cancel(event) {
-    event.stopPropagation();
+    if (event) {
+      event.stopPropagation();
+    }
     document.querySelector("#" + NUKE_OVERLAY_ID).style.display = "none";
     commentId = undefined;
     nukedPersonId = undefined;
@@ -270,6 +277,11 @@ function onLoad() {
     document.querySelector("#tz_btn_0").addEventListener('mouseup', nukeBlock);
     document.querySelector("#tz_btn_1").addEventListener('mouseup', nukeBlockReport);
     document.querySelector("#tz_btn_2").addEventListener('mouseup', cancel);
+
+    chrome.extension.sendRequest({'name': 'hydrogen'}, function(result) {
+        isHydrogen = result.hydrogen == "true" ? true : false;
+    });
+
 }
 document.addEventListener("DOMContentLoaded", onLoad);
 

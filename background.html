@@ -60,6 +60,8 @@ function onRequest(request, sender, callback) {
         } else {
             callback({})
         }
+    } else if (n == 'hydrogen') {
+      callback({'hydrogen': localStorage['hydrogen']});
     } else if (n == 'nukeClick') {
         trackNukeClick();
     } else if (n == 'report') {

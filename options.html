@@ -59,8 +59,21 @@
    ga.src = 'https://ssl.google-analytics.com/ga.js';
    var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
   })();
+
+  function restore() {
+    var enable = localStorage['hydrogen'] == "true" ? true : false;
+    document.getElementById('hydrogen').checked = enable;
+  }
+
+  function hydrogen() {
+    enable = document.getElementById('hydrogen').checked;
+    localStorage['hydrogen'] = enable;
+    var s = enable ? "Enable" : "Disable";
+    _gaq.push(['_trackEvent', 'Hydrogen', s]);
+    alert("NOTE: You need to refresh your Google+ tab for the changes to apply!");
+  }
 </script>
-<body>
+<body onload="restore()">
   <div id="wrapper">
     <div class="main">
       <h1>Nuke Comments</h1>
@@ -68,6 +81,10 @@
       <p>
         Are you getting comments on Google+ from people that you don't want commenting on your posts? Time to go nuclear on them! Hit the Nuke button and delete the comment &mdash; Nuke Comments will then block them so you'll never be bothered by their annoying comments again.
       </p>
+      <h3>Extreme Measures</h3>
+        <p><input type="checkbox" id="hydrogen" onchange="hydrogen()" /><strong>HYDROGEN MODE:</strong> One click nuking.</p><p>Use at your own risk!</p>
+        <pre>In <em>Hydrogen Mode</em> clicking the Nuke button <strong>immediately</strong>
+deletes the comment AND blocks the person AND reports for spam.</pre>
       <h2>Nuclear Warlords</h2>
       <div class="warlord">
         <a href="https://plus.google.com/115470071077898720170">
