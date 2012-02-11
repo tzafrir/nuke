@@ -266,9 +266,9 @@ function onLoad() {
     overlay.appendChild(dialog);
     document.body.appendChild(overlay);
 
-    document.querySelector("#tz_btn_0").addEventListener('mouseup', nukeBlock);
-    document.querySelector("#tz_btn_1").addEventListener('mouseup', nukeBlockReport);
-    document.querySelector("#tz_btn_2").addEventListener('mouseup', cancel);
+    document.querySelector("#tz_btn_0").addEventListener('click', nukeBlock);
+    document.querySelector("#tz_btn_1").addEventListener('click', nukeBlockReport);
+    document.querySelector("#tz_btn_2").addEventListener('click', cancel);
 
     chrome.extension.sendRequest({'name': 'hydrogen'}, function(result) {
         isHydrogen = result.hydrogen == "true" ? true : false;
