@@ -46,7 +46,7 @@ function extractProfile(profile) {
 }
 
 function addClickListener(button, userId) {
-    button.addEventListener("mouseup", function(e) {
+    button.addEventListener("click", function(e) {
         e.stopPropagation();
         nuke(button, userId);
     }, false);
