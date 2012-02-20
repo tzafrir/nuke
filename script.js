@@ -11,7 +11,7 @@ var RESCAN_PERIOD_IDLE = 5000;
 var YIELD = 10;
 var BATCH_SIZE = 40;
 
-var foundSomeButtons = true;
+var foundSomeactions = true;
 
 var cachedShortcutIcon;
 var cachedCount = -1;
@@ -31,10 +31,14 @@ var PROFILE_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".") + ", ."
 var POST_TEXT_SELECTOR = "." + POST_TEXT_CLASSNAME.replace(/ /g, ".");
 var POST_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".");
 
+// The flags container
+var ACTION_SELECTOR = ".Yg14nf.zo";
+
 var NUKE_OVERLAY_ID = 'tz_nuke_overlay';
 
 var selfId;
 var isHydrogen = false;
+var isDismissed = false;
 
 var commentId;
 var nukedPersonId;
@@ -69,19 +73,40 @@ function simulateClick(element) {
 
 function nuke(buttonFromComment, userId) {
     nukedPersonId = userId;
-    commentId = buttonFromComment.parentElement.children[0].id.split('po-')[1];
+    commentDiv = buttonFromComment.parentElement.parentElement.parentElement.parentElement;
+    commentId = commentDiv.id;
     chrome.extension.sendRequest({'name': 'nukeClick'}, function() {});
     var parent = buttonFromComment.parentElement.parentElement;
     nukedTextDiv = document.createElement("div");
     nukedTextDiv.style.cssText = "color: red; padding: 1px";
     parent.appendChild(nukedTextDiv);
-    commentDiv = buttonFromComment.parentElement.parentElement.parentElement.parentElement;
 
     if (isHydrogen) {
       nukeBlockReport();
     } else {
       document.querySelector("#" + NUKE_OVERLAY_ID).style.display = "block";
     }
+}
+
+function deprecated(nukeButton) {
+    nukeButton.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var popup = document.createElement("div");
+      popup.style.cssText = "box-shadow: 0 2px 4px rgba(0, 0, 0, .2); border-radius: 2px; background-color: white; border: 1px solid #CCC; padding: 16px; position: absolute; z-index: 1201!important;";
+      popup.style.left = e.offsetX + "px";
+      popup.style.bottom = e.offsetY + "px";
+      popup.style.width = "200px";
+
+      var deprecatedMessage = document.createElement('p');
+      deprecatedMessage.innerHTML = "The Nuke button has been moved near the Delete and Flag buttons. Look for <img src='http://tzafrir.net/ico/nuke.png' /><br /><br /><span style='color: red'>Dismiss</span>";
+      popup.appendChild(deprecatedMessage);
+      nukeButton.parentElement.appendChild(popup);
+      popup.addEventListener('click', function(event) {
+          event.stopPropagation();
+          popup.style.display = 'none';
+          chrome.extension.sendRequest({'name': 'dismissed'}, function() {});
+      }, false);
+    }, false);
 }
 
 function block() {
@@ -147,6 +172,15 @@ function getPostOwnerUrl(button) {
     }
 }
 
+function displayFirstWhenSecondIsHovered(first, second) {
+    second.addEventListener('mouseover', function(event) {
+      first.style.display = "";
+    });
+    second.addEventListener('mouseout', function(event) {
+      first.style.display = "none";
+    });
+}
+
 function processFooters(first) {
         if (!selfId) {
             chrome.extension.sendRequest({'name': 'getId'}, function(result) {
@@ -158,30 +192,31 @@ function processFooters(first) {
             return;
         }
 
-        var buttons = document.body ? document.body.querySelectorAll("button[g\\:entity^=buzz]:not([tz_nuke_a]), button[g\\:entity^=comment]:not([tz_nuke_a])") : [];
+
+        var actions = document.body ? document.body.querySelectorAll(ACTION_SELECTOR + ":not([tz_nuke_a])") : [];
 
         var oid = selfId;
 
-        if (!buttons || buttons.length == 0) {
+        if (!actions || actions.length == 0) {
             // Less aggressive if idle
-            window.setTimeout(processFooters, foundSomeButtons ? RESCAN_PERIOD : RESCAN_PERIOD_IDLE);
-            foundSomeButtons = false;
+            window.setTimeout(processFooters, foundSomeactions ? RESCAN_PERIOD : RESCAN_PERIOD_IDLE);
+            foundSomeactions = false;
             return;
         }
 
-        foundSomeButtons = true;
+        foundSomeactions = true;
 
-        for (var i = 0; i < buttons.length; i++) {
-            var button = buttons[i];
-            button.setAttribute("tz_nuke_a", 1);
+        for (var i = 0; i < actions.length; i++) {
+            var action = actions[i];
+            action.setAttribute("tz_nuke_a", 1);
 
             // Only show nuke button on posts owned by the user.
-            if (!getPostOwnerUrl(button).match(oid)) {
+            if (!getPostOwnerUrl(action).match(oid)) {
                 continue;
             }
 
             // Try to figure out what the author's name is
-            var parent = button.parentElement;
+            var parent = action.parentElement;
             var profile;
             while (parent != null) {
                 var profileLink = parent.querySelector(PROFILE_NAME_SELECTOR);
@@ -201,16 +236,30 @@ function processFooters(first) {
                 continue;
             }
 
-            if (button.id.match(/#/)) {
-                // Nuke.
-                var newButton = document.createElement('a');
-                newButton.setAttribute('role', 'button');
-                newButton.textContent = "Nuke";
+            // Nuke.
+            var newButton = document.createElement('div');
+            newButton.setAttribute('role', 'button');
+            newButton.style.cssText = "height: 16px; width: 16px; float: right;" +
+                                      "background:url('http://tzafrir.net/ico/nuke.png');" +
+                                      "margin-left: 12px; display: none";
+            newButton.title = "Nuke this comment";
+            action.appendChild(newButton, null);
+            addClickListener(newButton, profile.profileName);
+            displayFirstWhenSecondIsHovered(newButton, action.parentElement.parentElement);
 
-                button.parentElement.appendChild(document.createTextNode('\u00a0\u00a0-\u00a0\u00a0'));
-                button.parentElement.appendChild(newButton, null);
-                addClickListener(newButton, profile.profileName);
+            if (!isDismissed) {
+                // Deprecation.
+                var depButton = document.createElement('a');
+                depButton.setAttribute('role', 'button');
+                depButton.textContent = "Nuke";
+                depButton.style.color = "#666";
+                var element = action.parentElement.children[1];
+
+                element.appendChild(document.createTextNode('\u00a0\u00a0-\u00a0\u00a0'));
+                element.appendChild(depButton, null);
+                deprecated(depButton);
             }
+
         }
         window.setTimeout(processFooters, RESCAN_PERIOD);
 }
@@ -270,8 +319,9 @@ function onLoad() {
     document.querySelector("#tz_btn_1").addEventListener('click', nukeBlockReport);
     document.querySelector("#tz_btn_2").addEventListener('click', cancel);
 
-    chrome.extension.sendRequest({'name': 'hydrogen'}, function(result) {
+    chrome.extension.sendRequest({'name': 'settings'}, function(result) {
         isHydrogen = result.hydrogen == "true" ? true : false;
+        isDismissed = result.dismissed == "true" ? true : false;
     });
 
 }
