@@ -6,8 +6,8 @@
  * Modified by Tzafrir Rehan to add nuke-specific logic, and remove unused code.
  */
 
-var RESCAN_PERIOD = 1000;
-var RESCAN_PERIOD_IDLE = 5000;
+var RESCAN_PERIOD = 500;
+var RESCAN_PERIOD_IDLE = 2500;
 var YIELD = 10;
 var BATCH_SIZE = 40;
 
