@@ -266,6 +266,8 @@ function processFooters(first) {
 
 function onLoad() {
     processFooters();
+    var isNotification = !!document.location.toString().match(/\/notifications\/frame/);
+    var size = isNotification ? "100%" : "2em";
     var overlay = document.createElement("div");
     overlay.id = NUKE_OVERLAY_ID;
     overlay.style.cssText = "display: none;" +
@@ -284,7 +286,7 @@ function onLoad() {
                            "width: 100%;" +
                            "height: 30%;" +
                            "text-align: center;" +
-                           "font-size: 2em;" +
+                           "font-size: " + size + ";" +
                            "font-family: monospace;" +
                            "color: #400;";
 
