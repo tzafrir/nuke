@@ -98,7 +98,7 @@ function deprecated(nukeButton) {
       popup.style.width = "200px";
 
       var deprecatedMessage = document.createElement('p');
-      deprecatedMessage.innerHTML = "The Nuke button has been moved near the Delete and Flag buttons. Look for <img src='http://tzafrir.net/ico/nuke.png' /><br /><br /><span style='color: red'>Dismiss</span>";
+      deprecatedMessage.innerHTML = "The Nuke button has been moved near the Delete and Flag buttons. Look for <img src='https://nukecomments.appspot.com/ico/nuke.png' /><br /><br /><span style='color: red'>Dismiss</span>";
       popup.appendChild(deprecatedMessage);
       nukeButton.parentElement.appendChild(popup);
       popup.addEventListener('click', function(event) {
@@ -240,7 +240,7 @@ function processFooters(first) {
             var newButton = document.createElement('div');
             newButton.setAttribute('role', 'button');
             newButton.style.cssText = "height: 16px; width: 16px; float: right;" +
-                                      "background:url('http://tzafrir.net/ico/nuke.png');" +
+                                      "background:url('https://nukecomments.appspot.com/ico/nuke.png');" +
                                       "margin-left: 12px; display: none";
             newButton.title = "Nuke this comment";
             action.appendChild(newButton, null);
