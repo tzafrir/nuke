@@ -6,12 +6,7 @@
 <script type="text/javascript" src="/content_script_api_bridge.js"></script>
 <script type="text/javascript" src="/background_controller.js"></script>
 <script>
-  var plus = new GooglePlusAPI();
-  var init = false;
-  plus.init(function(ok) {
-    init = ok;
-  });
-  plus.refreshInfo();
+  var INIT_REPEAT_INTERVAL = 5000;
 
   var _gaq = _gaq || [];
   _gaq.push(['_setAccount', 'UA-27041781-3']);
@@ -89,4 +84,20 @@ function onRequest(request, sender, callback) {
 
 // Wire up the listener.
 chrome.extension.onRequest.addListener(onRequest);
+
+// Set up the API
+var plus = new GooglePlusAPI();
+
+function checkInit(ok) {
+  if (!ok) {
+    window.setTimeout(function() {
+      plus.init(checkInit);
+    }, INIT_REPEAT_INTERVAL);
+  } else {
+    plus.refreshInfo();
+  }
+}
+
+checkInit(false);
+
 </script>
