@@ -68,13 +68,11 @@ function onRequest(request, sender, callback) {
     } else if (n == 'nukeClick') {
         trackNukeClick();
     } else if (n == 'report') {
-      console.log('will report: ' + request.userId);
         plus.reportProfile(function(ok) {
           callback({'ok': ok});
           trackReportSuccess(ok);
         }, request.userId);
     } else if (n == 'deleteComment') {
-        console.log('will del: '+request.commentId);
         plus.deleteComment(function(ok) {
           callback({'ok': ok});
           trackDeleteSuccess(ok);
