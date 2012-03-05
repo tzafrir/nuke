@@ -36,7 +36,6 @@ var NUKE_OVERLAY_ID = 'tz_nuke_overlay';
 
 var selfId;
 var isHydrogen = false;
-var isDismissed = false;
 
 var commentId;
 var nukedPersonId;
@@ -84,27 +83,6 @@ function nuke(buttonFromComment, userId) {
     } else {
       document.querySelector("#" + NUKE_OVERLAY_ID).style.display = "block";
     }
-}
-
-function deprecated(nukeButton) {
-    nukeButton.addEventListener('click', function(e) {
-      e.stopPropagation();
-      var popup = document.createElement("div");
-      popup.style.cssText = "box-shadow: 0 2px 4px rgba(0, 0, 0, .2); border-radius: 2px; background-color: white; border: 1px solid #CCC; padding: 16px; position: absolute; z-index: 1201!important;";
-      popup.style.left = e.offsetX + "px";
-      popup.style.bottom = e.offsetY + "px";
-      popup.style.width = "200px";
-
-      var deprecatedMessage = document.createElement('p');
-      deprecatedMessage.innerHTML = "The Nuke button has been moved near the Delete and Flag buttons. Look for <img src='https://nukecomments.appspot.com/ico/nuke.png' /><br /><br /><span style='color: red'>Dismiss</span>";
-      popup.appendChild(deprecatedMessage);
-      nukeButton.parentElement.appendChild(popup);
-      popup.addEventListener('click', function(event) {
-          event.stopPropagation();
-          popup.style.display = 'none';
-          chrome.extension.sendRequest({'name': 'dismissed'}, function() {});
-      }, false);
-    }, false);
 }
 
 function block() {
@@ -244,20 +222,6 @@ function processFooters(first) {
             action.appendChild(newButton, null);
             addClickListener(newButton, profile.profileName);
             displayFirstWhenSecondIsHovered(newButton, action.parentElement.parentElement);
-
-            if (!isDismissed) {
-                // Deprecation.
-                var depButton = document.createElement('a');
-                depButton.setAttribute('role', 'button');
-                depButton.textContent = "Nuke";
-                depButton.style.color = "#666";
-                var element = action.parentElement.children[1];
-
-                element.appendChild(document.createTextNode('\u00a0\u00a0-\u00a0\u00a0'));
-                element.appendChild(depButton, null);
-                deprecated(depButton);
-            }
-
         }
         window.setTimeout(processFooters, RESCAN_PERIOD);
 }
@@ -321,7 +285,6 @@ function onLoad() {
 
     chrome.extension.sendRequest({'name': 'settings'}, function(result) {
         isHydrogen = result.hydrogen == "true" ? true : false;
-        isDismissed = result.dismissed == "true" ? true : false;
     });
 
 }

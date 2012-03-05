@@ -37,10 +37,6 @@
     _gaq.push(['_trackEvent', 'Blocking', s]);
   }
 
-  function trackDismissed() {
-    _gaq.push(['_trackEvent', 'Dismissed', 'Dismissed']);
-  }
-
 </script>
 <script>
 
@@ -60,11 +56,7 @@ function onRequest(request, sender, callback) {
             callback({})
         }
     } else if (n == 'settings') {
-      callback({'hydrogen': localStorage['hydrogen'],
-                'dismissed': localStorage['dismissed']});
-    } else if (n == 'dismissed') {
-      localStorage['dismissed'] = 'true';
-      trackDismissed();
+      callback({'hydrogen': localStorage['hydrogen']});
     } else if (n == 'nukeClick') {
         trackNukeClick();
     } else if (n == 'report') {
