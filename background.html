@@ -6,7 +6,7 @@
 <script type="text/javascript" src="/content_script_api_bridge.js"></script>
 <script type="text/javascript" src="/background_controller.js"></script>
 <script>
-  var INIT_REPEAT_INTERVAL = 5000;
+  var INIT_REPEAT_INTERVAL = 3 * 60000;
 
   var _gaq = _gaq || [];
   _gaq.push(['_setAccount', 'UA-27041781-3']);
@@ -49,6 +49,9 @@ function onRequest(request, sender, callback) {
           trackBlockSuccess(ok);
         }, [request.userId], true);
     } else if (n == 'getId') {
+        if (!plus.isAuthenticated()) {
+          plus.init(function(){});
+        }
         var info = plus.getInfo();
         if (info) {
             callback({'id': plus.getInfo().id});
@@ -77,6 +80,7 @@ chrome.extension.onRequest.addListener(onRequest);
 
 // Set up the API
 var plus = new GooglePlusAPI();
+plus.init(function(){});
 
 window.setInterval(function() {
   plus.init(function(){});
