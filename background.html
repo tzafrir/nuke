@@ -78,16 +78,8 @@ chrome.extension.onRequest.addListener(onRequest);
 // Set up the API
 var plus = new GooglePlusAPI();
 
-function checkInit(ok) {
-  if (!ok) {
-    window.setTimeout(function() {
-      plus.init(checkInit);
-    }, INIT_REPEAT_INTERVAL);
-  } else {
-    plus.refreshInfo();
-  }
-}
-
-checkInit(false);
+window.setInterval(function() {
+  plus.init(function(){});
+}, INIT_REPEAT_INTERVAL);
 
 </script>
