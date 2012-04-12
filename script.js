@@ -16,17 +16,13 @@ var cachedCount = -1;
 var settings;
 
 // Forgive us, gods of programming
-var COMMENT_CLASSNAME = "c-C UuCFYe";
-var POST_TEXT_CLASSNAME = "rXnUBd";
 var POST_NAME_CLASSNAME = "cs2K7c qk is";
 var COMMENT_NAME_CLASSNAME = "cs2K7c qk xs";
 
 var DELETED_COMMENT_CLASSNAME = "Vd";
 
 // Major DRY violation here...
-var COMMENT_SELECTOR = "." + COMMENT_CLASSNAME.replace(/ /g, ".");
 var PROFILE_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".") + ", ." + COMMENT_NAME_CLASSNAME.replace(/ /g, ".");
-var POST_TEXT_SELECTOR = "." + POST_TEXT_CLASSNAME.replace(/ /g, ".");
 var POST_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".");
 
 // The flags container
@@ -51,21 +47,6 @@ function addClickListener(button, userId) {
         e.stopPropagation();
         nuke(button, userId);
     }, false);
-}
-
-function simulateClick(element) {
-    var clickEvent;
-    clickEvent = document.createEvent("MouseEvents")
-    clickEvent.initEvent("mousedown", true, true)
-    element.dispatchEvent(clickEvent);
-    
-    clickEvent = document.createEvent("MouseEvents")
-    clickEvent.initEvent("click", true, true)
-    element.dispatchEvent(clickEvent);
-    
-    clickEvent = document.createEvent("MouseEvents")
-    clickEvent.initEvent("mouseup", true, true)
-    element.dispatchEvent(clickEvent);
 }
 
 function nuke(buttonFromComment, userId) {
