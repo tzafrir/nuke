@@ -70,7 +70,8 @@ function simulateClick(element) {
 
 function nuke(buttonFromComment, userId) {
     nukedPersonId = userId;
-    commentDiv = buttonFromComment.parentElement.parentElement.parentElement.parentElement;
+    commentDiv = buttonFromComment.parentElement.parentElement
+                .parentElement.parentElement.parentElement.parentElement;
     commentId = commentDiv.id;
     chrome.extension.sendRequest({'name': 'nukeClick'}, function() {});
     var parent = buttonFromComment.parentElement.parentElement;
