@@ -197,13 +197,14 @@ function processFooters(first) {
             // Nuke.
             var newButton = document.createElement('div');
             newButton.setAttribute('role', 'button');
-            newButton.style.cssText = "height: 16px; width: 16px; float: right;" +
+            newButton.style.cssText = "height: 16px; width: 16px; float: left;" +
                                       "background:url('https://nukecomments.appspot.com/ico/nuke.png');" +
-                                      "margin-left: 12px; display: none";
+                                      "margin-right: 12px; display: none";
             newButton.title = "Nuke this comment";
-            action.appendChild(newButton, null);
+            action.insertBefore(newButton, action.children[0]);
             addClickListener(newButton, profile.profileName);
-            displayFirstWhenSecondIsHovered(newButton, action.parentElement.parentElement);
+            displayFirstWhenSecondIsHovered(newButton, action.parentElement.parentElement
+                                                       .parentElement.parentElement.parentElement);
         }
         window.setTimeout(processFooters, RESCAN_PERIOD);
 }
