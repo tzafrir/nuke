@@ -49,10 +49,16 @@ function addClickListener(button, userId) {
     }, false);
 }
 
+function findCommentDiv(element) {
+  while (!(element.id && element.id.match(/.+#[0-9]+/))) {
+    element = element.parentElement;
+  }
+  return element;
+}
+
 function nuke(buttonFromComment, userId) {
     nukedPersonId = userId;
-    commentDiv = buttonFromComment.parentElement.parentElement
-                .parentElement.parentElement.parentElement.parentElement;
+    commentDiv = findCommentDiv(buttonFromComment);
     commentId = commentDiv.id;
     chrome.extension.sendRequest({'name': 'nukeClick'}, function() {});
     var parent = buttonFromComment.parentElement.parentElement;
@@ -203,8 +209,7 @@ function processFooters(first) {
             newButton.title = "Nuke this comment";
             action.insertBefore(newButton, action.children[0]);
             addClickListener(newButton, profile.profileName);
-            displayFirstWhenSecondIsHovered(newButton, action.parentElement.parentElement
-                                                       .parentElement.parentElement.parentElement);
+            displayFirstWhenSecondIsHovered(newButton, findCommentDiv(action));
         }
         window.setTimeout(processFooters, RESCAN_PERIOD);
 }
