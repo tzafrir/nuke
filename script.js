@@ -69,7 +69,11 @@ function nuke(buttonFromComment, userId) {
     if (isHydrogen) {
       nukeBlockReport();
     } else {
-      document.querySelector("#" + NUKE_OVERLAY_ID).style.display = "block";
+      var overlay = document.querySelector("#" + NUKE_OVERLAY_ID);
+      if (!overlay) {
+        createOverlay();
+      }
+      overlay.style.display = "block";
     }
 }
 
@@ -214,11 +218,10 @@ function processFooters(first) {
         window.setTimeout(processFooters, RESCAN_PERIOD);
 }
 
-function onLoad() {
-    processFooters();
+function createOverlay() {
+    var overlay = document.createElement("div");
     var isNotification = !!document.location.toString().match(/\/notifications\/frame/);
     var size = isNotification ? "100%" : "2em";
-    var overlay = document.createElement("div");
     overlay.id = NUKE_OVERLAY_ID;
     overlay.style.cssText = "display: none;" +
                             "background-color: rgba(180, 0, 0, 0.6);" +
@@ -270,6 +273,11 @@ function onLoad() {
     document.querySelector("#tz_btn_0").addEventListener('click', nukeBlock);
     document.querySelector("#tz_btn_1").addEventListener('click', nukeBlockReport);
     document.querySelector("#tz_btn_2").addEventListener('click', cancel);
+}
+
+function onLoad() {
+    processFooters();
+    createOverlay();
 
     chrome.extension.sendRequest({'name': 'settings'}, function(result) {
         isHydrogen = result.hydrogen == "true" ? true : false;
