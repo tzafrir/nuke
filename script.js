@@ -16,17 +16,17 @@ var cachedCount = -1;
 var settings;
 
 // Forgive us, gods of programming
-var POST_NAME_CLASSNAME = "gi ld md";
-var COMMENT_NAME_CLASSNAME = "gi ld qm";
+var POST_NAME_CLASSNAME = "Sg Ob Tc";
+var COMMENT_NAME_CLASSNAME = "Sg Ob qm";
 
-var DELETED_COMMENT_CLASSNAME = "re";
+var DELETED_COMMENT_CLASSNAME = "Af";
 
 // Major DRY violation here...
 var PROFILE_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".") + ", ." + COMMENT_NAME_CLASSNAME.replace(/ /g, ".");
 var POST_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".");
 
 // The flags container
-var ACTION_SELECTOR = ".lZ.GC";
+var ACTION_SELECTOR = ".N7.lP";
 
 var NUKE_OVERLAY_ID = 'tz_nuke_overlay';
 
