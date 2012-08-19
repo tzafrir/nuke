@@ -28,6 +28,7 @@ GooglePlusAPI = function(opt) {
   this.ACTIVITIES_API          = 'https://plus.google.com/${pagetoken}/_/stream/getactivities/';
   this.MUTE_ACTIVITY_API       = 'https://plus.google.com/${pagetoken}/_/stream/muteactivity/';
   this.POST_API                = 'https://plus.google.com/${pagetoken}/_/sharebox/post/?spam=20&rt=j';
+  this.LINK_DETAILS_API        = 'https://plus.google.com/${pagetoken}/_/sharebox/linkpreview/';
   this.PAGES_API               = 'https://plus.google.com/${pagetoken}/_/pages/get/';
 
   // Not Yet Implemented API
@@ -43,19 +44,29 @@ GooglePlusAPI = function(opt) {
   
 	//------------------------ Private Fields --------------------------
   this._opt = opt || {};
-  this._db = this._opt.use_mockdb ? new MockDB() : new PlusDB();
+  this._pageid = this._opt.pageid;
   this._googleid = this._opt.googleid || 0;
+  var dbPostfix = this._googleid + (this._pageid ? '_' + this._pageid : '');
+  if (dbPostfix == '0') {
+    dbPostfix = '';
+  }
+  this._db = this._opt.use_mockdb ? new MockDB() : new PlusDB(dbPostfix);
 
   this._session = null;
   this._info = null;
 
-  this.BURST_INTERVAL = 2000; // time between requesting 'more/burst' search results
+  // Time between requesting more pages in search resutls.
+  this.PRECACHE_INTERVAL = 1000;
+
+  // Time between requesting 'more/burst' search results.
+  this.BURST_INTERVAL = 5000;
 
 
   this._db.open();
 };
 
 //------------------------ Private Functions --------------------------
+
 /**
  * Parse JSON string in a clean way by removing a bunch of commas and brackets. These should only
  * be used in Google post requests.
@@ -63,11 +74,16 @@ GooglePlusAPI = function(opt) {
  * @param {string} input The irregular JSON string to parse.
  */
 GooglePlusAPI.prototype._parseJSON = function(input) {
+  // We could use eval, but what if Google is untrustworthy?
+  //return eval('(' + input + ')');
+
   var jsonString = input.replace(/\[,/g, '[null,');
   jsonString = jsonString.replace(/,\]/g, ',null]');
   jsonString = jsonString.replace(/,,/g, ',null,');
   jsonString = jsonString.replace(/,,/g, ',null,');
+  jsonString = jsonString.replace(/{(\d+):/g, '{"$1":');
   return JSON.parse(jsonString);
+
 };
 
 /**
@@ -77,8 +93,8 @@ GooglePlusAPI.prototype._parseJSON = function(input) {
  */
 GooglePlusAPI.prototype._parseURL = function(urlTemplate) {
   var pagetoken = 'u/' + this._googleid;
-  if (this._pageid) { // TODO: Not Yet Supported!
-    pagetoken += '/b/' + this.pageid;
+  if (this._pageid) {
+    pagetoken += '/b/' + this._pageid;
   }
   return urlTemplate.replace(/\${pagetoken}/g, pagetoken);
 };
@@ -90,6 +106,7 @@ GooglePlusAPI.prototype._parseURL = function(urlTemplate) {
  * @param {function(Object.<string, Object>)} callback
  * @param {string} urlTemplate The URL template to request.
  * @param {string} postData If specified, it will do a POST with the data.
+ * @return {XMLHttpRequest} The created XMLHttpRequest object.
  */
 GooglePlusAPI.prototype._requestService = function(callback, urlTemplate, postData) {
   var self = this;
@@ -115,6 +132,16 @@ GooglePlusAPI.prototype._requestService = function(callback, urlTemplate, postDa
       callback(Array.isArray(results) ? results[0] : results);
     }
   };
+  var error = function(jqXHR, textStatus, errorThrown) {
+    if (textStatus == "parsererror") {
+      console.error(jqXHR, 'parsererror');
+    }
+    callback({
+      error: errorThrown,
+      text: textStatus
+    });
+  };
+
   // TODO: This is the only jQuery part, try to convert it to plain old JavaScript so we could
   //       remove the dependency of using the jQuery library!
   var xhr = $.ajax({
@@ -123,8 +150,11 @@ GooglePlusAPI.prototype._requestService = function(callback, urlTemplate, postDa
     data: postData || null,
     dataType: 'json',
     async: true,
-    complete: success
+    complete: success,
+    error: error
   });
+
+  return xhr;
 };
 
 /**
@@ -150,13 +180,13 @@ GooglePlusAPI.prototype._parsePost = function(element) {
   item.owner.id = element[16];
   item.owner.image = this._fixImage(element[18]);
 
-  if (element[43]) { // Share?
+  if (element[44]) { // Share?
     item.share = {};
-    item.share.name = element[43][0];
-    item.share.id = element[43][1];
-    item.share.image = this._fixImage(element[43][4]);
-    item.share.html = element[43][4];
-    item.share.url = this._buildProfileURLFromItem(element[43][4]);
+    item.share.name = element[44][0];
+    item.share.id = element[44][1];
+    item.share.image = this._fixImage(element[44][4]);
+    item.share.html = element[44][4];
+    item.share.url = this._buildProfileURLFromItem(element[44][4]);
     item.html = element[47];
   }
   else { // Normal
@@ -185,7 +215,7 @@ GooglePlusAPI.prototype._parsePost = function(element) {
       item.data.active = isActive;
       item.data.id = hangoutID;
       item.data.participants = [];
-      item.data.extra_data = hangoutData[13];
+      item.data.extra_data = hangoutData[15];
       
       var cachedOnlineUsers = {};
       var onlineParticipants = hangoutData[3];
@@ -281,7 +311,7 @@ GooglePlusAPI.prototype._getSession = function(opt_reset) {
   if (opt_reset || !this._session) {
     var xhr = $.ajax({
       type: 'GET',
-      url: 'https://plus.google.com',
+      url: this._parseURL('https://plus.google.com/${pagetoken}/'),
       data: null,
       async: false
     });
@@ -296,7 +326,7 @@ GooglePlusAPI.prototype._getSession = function(opt_reset) {
     // freezes the entire browser. For now, we will just discover it since
     // indexOf doesn't freeze while search/match/exec freezes.
     var isLogged = false;
-    var searchForString = ',"https://www.google.com/csi","';
+    var searchForString = ',"https://csi.gstatic.com/csi","';
     var responseText = xhr.responseText;
     if (responseText != null) {
       var startIndex = responseText.indexOf(searchForString);
@@ -473,6 +503,34 @@ GooglePlusAPI.prototype._createMediaItem = function(item) {
   return null;
 };
 
+/**
+ * Create a wire format ACL string.
+ *
+ * @param {AclItem<Array>} aclItems
+ * @return {Object}
+ *
+ * (AclItem: {GooglePlusAPI.ACL type, String id}, where id is a circle id for ACL.SPECIFIED_CIRCLE,
+ *     or a user's id for ACL.SPECIFIED_PERSON)
+ */
+GooglePlusAPI.prototype._parseAclItems = function(aclItems) {
+  var resultAclEntries = aclItems.map(function(aclItem) {
+    var selfId = this.getInfo().id;
+    if (aclItem.type == GooglePlusAPI.AclType.PUBLIC) {
+      return [null, null, 1];
+    } else if (aclItem.type == GooglePlusAPI.AclType.EXTENDED_CIRCLES) {
+      return [null, null, 4];
+    } else if (aclItem.type == GooglePlusAPI.AclType.YOUR_CIRCLES) {
+      return [null, null, 3];
+    } else if (aclItem.type == GooglePlusAPI.AclType.SPECIFIED_CIRCLE) {
+      return [null, aclItem.id];
+    } else if (aclItem.type == GooglePlusAPI.AclType.SPECIFIED_PERSON) {
+      return [[null, null, aclItem.id]];
+    }
+  }.bind(this));
+  return [resultAclEntries];
+};
+
+
 //----------------------- Public Functions ------------------------.
 /**
  * @return True if session is valid to Google+.
@@ -496,10 +554,10 @@ GooglePlusAPI.prototype.init = function(callback) {
   var self = this;
   if(this.isAuthenticated()) {
     this.refreshInfo(function() {
-        self._fireCallback(callback, true);
+        self._fireCallback(callback, {status: true});
     });
   } else {
-    this._fireCallback(callback, false);
+    this._fireCallback(callback, {status: false});
   }
 };
 
@@ -519,7 +577,7 @@ GooglePlusAPI.prototype.refreshCircles = function(callback, opt_onlyCircles) {
     var dirtyCircles = response[1];
     self._db.getCircleEntity().clear(function(res) {
       if (!res.status) {
-        self._fireCallback(callback, false);
+        self._fireCallback(callback, {status: false});
       }
       else {
         var dirtyUsers = response[2];
@@ -539,7 +597,7 @@ GooglePlusAPI.prototype.refreshCircles = function(callback, opt_onlyCircles) {
         var remaining = onlyCircles ? batchRemaining[0] : batchRemaining[0] + batchRemaining[1];
         var onComplete = function(result) {
           if (--remaining == 0) {
-            self._fireCallback(callback, true);
+            self._fireCallback(callback, {status: true});
           }
         };
 
@@ -612,7 +670,7 @@ GooglePlusAPI.prototype.refreshFollowers = function(callback) {
     var remaining = dirtyFollowers.length;
     var onComplete = function(result) {
       if (--remaining == 0) {
-        self._fireCallback(callback, true);
+        self._fireCallback(callback, {status: true});
       }
     };
 
@@ -650,7 +708,7 @@ GooglePlusAPI.prototype.refreshFindPeople = function(callback) {
     var remaining = dirtyUsers.length;
     var onComplete = function(result) {
       if (--remaining == 0) {
-        self._fireCallback(callback, true);
+        self._fireCallback(callback, {status: true});
       }
     };
 
@@ -693,21 +751,22 @@ GooglePlusAPI.prototype.refreshInfo = function(callback) {
     // Just get the fist result of the Map.
     for (var i in responseMap) {
       var detail = responseMap[i];
-      var emailParse = detail[20].match(/(.+) <(.+)>/);
-      self._info.full_email = emailParse[0];
-      self._info.name = emailParse[1];
-      self._info.email = emailParse[2];
+      var emailParse = detail[20] && detail[20].match && detail[20].match(/(.+) <(.+)>/);
+      if (emailParse) {
+        self._info.full_email = emailParse[0];
+        self._info.email = emailParse[2];
+      }
+      self._info.name = detail[1][4][3];
       self._info.id = detail[0];
-      self._info.acl = '"' + (detail[1][14][0][0]).replace(/"/g, '\\"') + '"';
+      self._info.image_url = 'https:' + detail[1][3];
+      // TODO: ACL was removes from this request.
+      //self._info.acl = '"' + (detail[1][14][0][0]).replace(/"/g, '\\"') + '"';
       self._info.circles = detail[10][1].map(function(element) {
         return {id: element[0], name: element[1]}
       });
       break;
     }
-    self._fireCallback(callback, {
-      status: true,
-      data: self._info
-    });
+    self._fireCallback(callback, { status: true, data: self._info });
   }, this.INITIAL_DATA_API);
 };
 
@@ -735,7 +794,7 @@ GooglePlusAPI.prototype.addPeople = function(callback, circle, users) {
     var remaining = dirtyPeople.length;
     var onComplete = function(result) {
       if (--remaining == 0) {
-        self._fireCallback(callback, true);
+        self._fireCallback(callback, {status: true});
       }
     };
     dirtyPeople.forEach(function(element, index) {
@@ -773,7 +832,7 @@ GooglePlusAPI.prototype.removePeople = function(callback, circle, users) {
     var remaining = users.length;
     var onComplete = function(result) {
       if (--remaining == 0) {
-        self._fireCallback(callback, true);
+        self._fireCallback(callback, {status: true});
       }
     };
     users.forEach(function(element, index) {
@@ -874,7 +933,7 @@ GooglePlusAPI.prototype.sortCircle = function(callback, circle_id, index) {
   var requestParams = '?c=["' + circle_id + '"]&i=' + parseInt(index);
   var data = 'at=' + this._getSession();
   this._requestService(function(response) {
-    self._fireCallback(callback, true);
+    self._fireCallback(callback, {status: true});
   }, this.SORT_MUTATE_API + requestParams, data);
 };
 
@@ -913,11 +972,11 @@ GooglePlusAPI.prototype.deleteComment = function(callback, commentId) {
   }
   var self = this;
   if (!commentId) {
-    self._fireCallback(callback, false);
+    self._fireCallback(callback, {status: false, data: 'Missing parameter: commentId'});
   }
   var data = 'commentId=' + commentId + '&at=' + this._getSession();
   this._requestService(function(response) {
-    self._fireCallback(callback, (!response.error));
+    self._fireCallback(callback, {status: !response.error});
   }, this.DELETE_COMMENT_API, data);
 };
 
@@ -933,13 +992,14 @@ GooglePlusAPI.prototype.getProfile = function(callback, id) {
   }
   var self = this;
   if (isNaN(id)) {
-    return {};
+    self._fireCallback(callback, {status: false, data: 'Invalid ID: Not a number'});
+    return;
   }
   this._requestService(function(response) {
     var obj = {
       introduction: response[1][2][14][1]
     };
-    self._fireCallback(callback, obj);
+    self._fireCallback(callback, {status: true, data: obj});
   }, this.PROFILE_GET_API + id);
 };
 
@@ -999,14 +1059,14 @@ GooglePlusAPI.prototype.lookupUsers = function(callback, ids) {
   // buckets. It is like filling a tub of water with a cup, we keep pooring water
   // in the cup until we finished filling the tub up.
   var users = {};
-  var MAX_SLICE = 40;
+  var MAX_SLICE = 12;
   var indexSliced = 0;
   
   // Internal request.
   var doRequest = function() {
     var usersParam = allParams.slice(indexSliced, indexSliced + MAX_SLICE);
     if (usersParam.length == 0) {
-      self._fireCallback(callback, users);
+      self._fireCallback(callback, { status: true, data: users });
       return;
     }
     indexSliced += usersParam.length;
@@ -1014,35 +1074,46 @@ GooglePlusAPI.prototype.lookupUsers = function(callback, ids) {
     var params = '?n=6&m=[[' + usersParam.join(', ') + ']]';
     var data = 'at=' + self._getSession();
     self._requestService(function(response) {
-      var usersArr = response[1];
-      usersArr.forEach(function(element, i) {
-        var userObj = self._parseUser(element[1], true);
-        var user = userObj[0];
-        var circles = userObj[1];
-        users[user.id] = {
-          data: user,
-          circles: circles
-        };
-      });
-      doRequest();
+      if (!response || response.error) {
+        var error = 'Error during slice ' + indexSliced + '. ' + response.error + ' [' + response.text + ']'; 
+        self._fireCallback(callback, { status: false, data: error });
+      }
+      else {
+        var usersArr = response[1];
+        usersArr.forEach(function(element, i) {
+          var userObj = self._parseUser(element[1], true);
+          var user = userObj[0];
+          var circles = userObj[1];
+          users[user.id] = {
+            data: user,
+            circles: circles
+          };
+        });
+        doRequest();
+      }
     }, self.LOOKUP_API + params, data);
   };
   doRequest();
 };
 
 /**
- * Lookups the activities for the circle.
+ * Lookups the activities for the circle or person.
  *
  * @param {function(data)} callback The response for the call, where
- *                                  the parameter is the data for the circles.
+ *                                  the parameter is the data for the activities.
  * @param {string} circleID The ID of the circle.
+ * @param {string} personID The ID of the person (only used if circleID is not provided).
+ * @param {string} pageToken A token recieved in a previous call. A call with this token will fetch
+ *                           the next page of activities.
  */
-GooglePlusAPI.prototype.lookupActivities = function(callback, circleID) {
+GooglePlusAPI.prototype.lookupActivities = function(callback, circleID, personID, pageToken) {
   if (!this._verifySession('lookupActivities', arguments)) {
     return;
   }
   var self = this;
-  var params = '?sp=' + encodeURIComponent('[1,2,null,"' + circleID + '",null,null,null,"social.google.com",[],null,null,null,null,null,null,[]]');
+  pageToken = pageToken || 'null';
+  var personCirclePair = (circleID ? 'null,"' + circleID + '"' : '"' + personID + '",null');
+  var params = '?f.req=' + encodeURIComponent('[[1,2,' + personCirclePair + ',null,null,null,"social.google.com",[],null,null,null,null,null,null,[]],' + pageToken + ']');
   this._requestService(function(response) {
     var errorExists = !response[1];
     if (errorExists) {
@@ -1059,7 +1130,8 @@ GooglePlusAPI.prototype.lookupActivities = function(callback, circleID) {
       }
       self._fireCallback(callback, {
         status: true,
-        data: cleanPosts
+        data: cleanPosts,
+        pageToken: response[1][1]
       });
     }
   }, this.ACTIVITIES_API + params);
@@ -1078,7 +1150,7 @@ GooglePlusAPI.prototype.lookupPost = function(callback, userID, postID) {
   if (!userID || !postID) {
     this._fireCallback(callback, {
       status: false,
-      data: 'You must specifify a userID and postID parameters.'
+      data: 'Missing parameters: userID and postID'
     });
     return;
   }
@@ -1106,12 +1178,12 @@ GooglePlusAPI.prototype.modifyMute = function(callback, itemId, muteStatus) {
   }
   var self = this;
   if (!itemId) {
-    self._fireCallback(callback, false);
+    self._fireCallback(callback, {status: false, data: 'Missing parameter: itemId'});
   }
   var mute = muteStatus || false;
   var data = 'itemId=' + itemId + '&mute=' + mute + '&at=' + this._getSession();
   this._requestService(function(response) {
-    self._fireCallback(callback, (!response.error));
+    self._fireCallback(callback, {status: !response.error});
   }, this.DELETE_COMMENT_API, data);
 };
 
@@ -1129,19 +1201,17 @@ GooglePlusAPI.prototype.saveProfile = function(callback, introduction) {
     return;
   }
   var self = this;
-  if (introduction) {
-    introduction = introduction.replace(/"/g, '\\"');
-  }
-  else {
-    introduction = 'null';
-  }
+  introduction = introduction ? introduction.replace(/"/g, '\\"') : 'null';
 
-  var acl = this.getInfo().acl;
+  var acl = JSON.stringify({aclEntries: [
+    {scope: scope, role: 20},
+    {scope: scope, role: 60}
+  ]});
   var data = 'profile=' + encodeURIComponent('[null,null,null,null,null,null,null,null,null,null,null,null,null,null,[[' +
       acl + ',null,null,null,[],1],"' + introduction + '"]]') + '&at=' + this._getSession();
 
   this._requestService(function(response) {
-    self._fireCallback(callback, response.error ? true : false);
+    self._fireCallback(callback, {status: !response.error});
   }, this.PROFILE_SAVE_API, data);
 };
 
@@ -1157,14 +1227,14 @@ GooglePlusAPI.prototype.reportProfile = function(callback, userId, opt_abuseReas
   }
   var self = this;
   if (!userId) {
-    self._fireCallback(callback, false);
+    self._fireCallback(callback, {status: false, data: 'Missing parameter: userId'});
   }
 
   var reason = opt_abuseReason || GooglePlusAPI.AbuseReason.SPAM;
   var data = 'itemId=' + userId + '&userInfo=[1]&abuseReport=[' + reason +
       ']&at=' + this._getSession();
   this._requestService(function(response) {
-    self._fireCallback(callback, (!response.error));
+    self._fireCallback(callback, {status: !response.error});
   }, this.PROFILE_REPORT_API, data);
 };
 
@@ -1193,6 +1263,14 @@ GooglePlusAPI.SearchPrivacy.YOU = 5;
 GooglePlusAPI.SearchCategory = {};
 GooglePlusAPI.SearchCategory.BEST = 1;
 GooglePlusAPI.SearchCategory.RECENT = 2;
+
+// ACL type ENUM
+GooglePlusAPI.AclType = {};
+GooglePlusAPI.AclType.PUBLIC = 1;
+GooglePlusAPI.AclType.EXTENDED_CIRCLES = 2;
+GooglePlusAPI.AclType.YOUR_CIRCLES = 3;
+GooglePlusAPI.AclType.SPECIFIED_CIRCLE = 4;
+GooglePlusAPI.AclType.SPECIFIED_PERSON = 5;
 
 /**
  * Searches Google+ for everything.
@@ -1228,42 +1306,65 @@ GooglePlusAPI.prototype.search = function(callback, query, opt_extra) {
   
   var doRequest = function(searchResults) {
     self._requestService(function(response) {
-      var errorExists = !response[1] || !response[1][1];
-      if (errorExists) {
-        self._fireCallback(callback, {
+      // Invalid response exists, it might mean we are doing a lot of searches
+      // or it might mean we have finished exhausting the realtime searching.
+      var invalidResponse = !response[1] || !response[1][1];
+      if (invalidResponse) {
+        // This might be an error, prepare the response so the consumer can
+        // deal with it.
+        var lastResponseObj = {
+          data: searchResults,
           status: false,
-          data: searchResults
-        });
-      } else {
-        var streamID = response[1][1][2]; // Not Used.
-        var trends = response[1][3]; // Not Used.
-        var dirtySearchResults = response[1][1][0][0];
-        processedData = data.replace('$SESSION_ID', ',null,["' + streamID + '"]');
-        for (var i = 0; i < dirtySearchResults.length; i++) {
-          var item = self._parsePost(dirtySearchResults[i]);
-          searchResults.push(item);
+          mode: mode
         };
-        
-        // Page the results.
-        if (precache > 1) {
-          precache--;
-          doRequest(searchResults); // Recurse till we are done paging.
+        // If it is a real time update, it just means it has completed
+        // successfully, no more realtime queries needed.
+        // TODO: Perhaps we need to wake it up, not important at this time.
+        if (mode === 'rt') {
+          lastResponseObj.status = true;
+          console.warn('precache:' + precache + ':' + extra.precache,
+              'burst_size:' + burst_size + ':' + extra.burst_size, searchResults.length);
         }
         else {
-          self._fireCallback(callback, {
-            status: true,
-            data: searchResults,
-            mode: mode
-          });
-          // Decide whether to do bursts or not.
-          if (burst && 
-               (mode === 'rt' || searchResults.length>0)){  // Bursts cannot start if there are initially no results
-            mode = 'rt';
-            if (--burst_size > 0) {
-                setTimeout(function() {
-                doRequest([]);
-              }.bind(this), self.BURST_INTERVAL);
-            }
+          lastResponseObj.status = false;
+          console.warn('precache:' + precache + ':' + extra.precache,
+              'burst_size:' + burst_size + ':' + extra.burst_size, searchResults.length);
+        }
+        self._fireCallback(callback, lastResponseObj);
+        return;
+      }
+
+      var streamID = response[1][1][2]; // Not Used.
+      var trends = response[1][3]; // Not Used.
+      var dirtySearchResults = response[1][1][0][0];
+      processedData = data.replace('$SESSION_ID', ',null,["' + streamID + '"]');
+      for (var i = 0; i < dirtySearchResults.length; i++) {
+        var item = self._parsePost(dirtySearchResults[i]);
+        searchResults.push(item);
+      };
+      
+      // Page the results.
+      if (precache > 1) {
+        precache--;
+        // Recurse till we are done paging.
+        setTimeout(function() {
+          doRequest(searchResults);
+        }.bind(this), self.PRECACHE_INTERVAL);
+      }
+      else {
+        self._fireCallback(callback, {
+          status: true,
+          data: searchResults,
+          mode: mode
+        });
+        // Decide whether to do bursts or not.
+        if (burst && 
+             (mode === 'rt' || searchResults.length>0)){  // Bursts cannot start if there are initially no results
+          mode = 'rt';
+          if (--burst_size > 0) {
+            setTimeout(function() {
+              doRequest([]);
+            }.bind(this), self.BURST_INTERVAL);
           }
         }
       }
@@ -1282,53 +1383,122 @@ GooglePlusAPI.prototype.search = function(callback, query, opt_extra) {
  *                            String:content - The content of the new post.
  *                            String:share_id - An existing post to share.
  *                            Media[]:media - An array of media elements.
+ *                            RawMedia[]:rawMedia - An array of raw media items in wire format.
+ *                                                  This is the output format of fetchLinkMedia.
+ *                                                  Overrides the media parameter when present.
+ *                            AclItem<Array>:aclItems - An array of acl items describing the
+ *                                                      audience of the post. See _parseAclItems
+ *                                                      for description.
+ *                                                      Defaults to [{type: PUBLIC}] if not present.
+ *                            String[]:notify - An array of user IDs to be notified about this post.
  */
 GooglePlusAPI.prototype.newPost = function(callback, postObj) {
   if (!this._verifySession('newPost', arguments)) {
     return;
   }
-  
+
   var content = postObj.content || null;
   var sharedPostId = postObj.share_id || null;
-  var media = postObj = postObj.media || null;
+  var media = postObj.media || null;
+  var rawMedia = postObj.rawMedia;
+  var notify = postObj.notify || [];
 
   var self = this;
-  if (!content && !sharedPostId) {
-    self._fireCallback(callback, false);
+  if (!content && !sharedPostId && !media && !rawMedia) {
+    self._fireCallback(callback, {
+      status: false,
+      data: 'Incomplete parameters: Must pass in content and sharedPostId'
+    });
   }
-  
+
   var sMedia = [];
-  if(media) {
-    for(var i in media) {
+  if (media && !rawMedia) {
+    for (var i in media) {
       sMedia.push(JSON.stringify(this._createMediaItem(media[i])));
     }
   }
-  
+
+  var acl = this._parseAclItems(postObj.aclItems || [{type: GooglePlusAPI.AclType.PUBLIC}]);
+
   var data = JSAPIHelper.nullArray(37);
-  
+
   data[0] = content || '';
   data[1] = 'oz:' + this.getInfo().id + '.' + new Date().getTime().toString(16) + '.0';
   data[2] = sharedPostId;
-  data[6] = JSON.stringify(sMedia);
-  data[8] = JSON.parse(this.getInfo().acl);
+  data[6] = JSON.stringify(postObj.rawMedia || sMedia);
   data[9] = true;
-  data[10] = [];
+  data[10] = notify.map(function(userId) {
+    return [null, userId];
+  });
   data[11] = false;
   data[12] = false;
   data[14] = [];
-  data[15] = false;
+  data[15] = null;
   data[16] = false;
   data[27] = false;
   data[28] = false;
   data[29] = false;
   data[36] = [];
-  
-  var params = 'spar=' + encodeURIComponent(JSON.stringify(data)) + '&at=' + encodeURIComponent(this._getSession());
-  
+  data[37] = acl;
+
+  var params = 'f.req=' + encodeURIComponent(JSON.stringify(data)) +
+      '&at=' + encodeURIComponent(this._getSession());
+
   this._requestService(function(response) {
-    self._fireCallback(callback, (!response.error));
+    self._fireCallback(callback, {status: !response.error});
   }, this.POST_API, params);
 };
+
+/**
+ * Fetch MediaDetail objects describing a URL.
+ *
+ * @param {String} url The url.
+ * @return An array containing Media Items, in the same format used by the newPost request.
+ */
+GooglePlusAPI.prototype.fetchLinkMedia = function(callback, url) {
+  if (!this._verifySession('fetchLinkMedia', arguments)) {
+    return;
+  }
+  var self = this;
+  var params = "?c=" + encodeURIComponent(url) + "&t=1&slpf=0&ml=1";
+  var data = 'susp=false&at=' + this._getSession();
+  this._requestService(function(response) {
+    if (response.error) {
+      self._fireCallback(callback, {status: false, data: response});
+    } else {
+      // Response contains either a image/video single element at index 3, or an array of elements
+      // describing a link at index 2. In any case, both of those indices are arrays of length >= 0.
+      var items = response[2].concat(response[3]);
+      self._fireCallback(callback, {status: true, data: items});
+    }
+  }, this.LINK_DETAILS_API + params, data);
+};
+
+/**
+ * Factory method, creates api instances for all user's identities, including pages.
+ *
+ * @param function(Object[]) callback
+ *
+ */
+GooglePlusAPI.prototype.getAllIdentitiesApis = function(callback) {
+  if (!this.isAuthenticated()) {
+    callback([]);
+  } else {
+    var result = [this];
+    var self = this;
+    this.getPages(function(response){
+      if (response.status) {
+        response.data.forEach(function(page) {
+          result.push(new GooglePlusAPI({
+            googleid: self._googleid,
+            pageid: page.id
+          }));
+        });
+      }
+      callback(result);
+    });
+  }
+}
 
 /**
  * @return {Object.<string, string>} The information from the user.
