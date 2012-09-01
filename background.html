@@ -80,7 +80,47 @@ chrome.extension.onRequest.addListener(onRequest);
 
 // Set up the API
 var plus = new GooglePlusAPI();
-plus.init(function(){});
+var apis = {};
+var initTimeoutId;
+
+function initialize(opts) {
+  var newPlus = new GooglePlusAPI();
+  if (!plus) {
+    plus = newPlus;
+  }
+  window.clearTimeout(initTimeoutId);
+  try {
+    newPlus.init(function(response) {
+      if (response.status) {
+        newPlus.getAllIdentitiesApis(function(result) {
+          result.forEach(function(api) {
+            function addApi() {
+              apis[api.getInfo().id] = api;
+            }
+            if (!(api.getInfo() && api.getInfo().id == newPlus.getInfo().id)) {
+              api.init(function() {
+                addApi();
+              });
+            } else {
+              plus = newPlus;
+              addApi();
+            }
+          });
+        });
+
+        initTimeoutId = window.setTimeout(initialize, INIT_REPEAT_INTERVAL);
+      } else {
+        initTimeoutId = window.setTimeout(initialize, INIT_RETRY_INTERVAL);
+      }
+    });
+  } catch (e) {
+    _gaq.push(['_trackEvent', 'Failure', 'plus.init']);
+    console.error(e, e.message);
+    window.setTimeout(initialize, INIT_RETRY_INTERVAL);
+  }
+};
+
+initialize();
 
 window.setInterval(function() {
   plus.init(function(){});
