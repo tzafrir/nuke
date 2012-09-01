@@ -6,8 +6,8 @@
  * Modified by Tzafrir Rehan to add nuke-specific logic, and remove unused code.
  */
 
-var RESCAN_PERIOD = 500;
-var RESCAN_PERIOD_IDLE = 2500;
+var RESCAN_PERIOD = 200;
+var RESCAN_PERIOD_IDLE = 1000;
 
 var foundSomeactions = true;
 
@@ -18,8 +18,6 @@ var settings;
 // Forgive us, gods of programming
 var POST_NAME_CLASSNAME = "Sg Ob Tc";
 var COMMENT_NAME_CLASSNAME = "Sg Ob qm";
-
-var DELETED_COMMENT_CLASSNAME = "Af";
 
 // Major DRY violation here...
 var PROFILE_NAME_SELECTOR = "." + POST_NAME_CLASSNAME.replace(/ /g, ".") + ", ." + COMMENT_NAME_CLASSNAME.replace(/ /g, ".");
@@ -56,6 +54,12 @@ function findCommentDiv(element) {
   return element;
 }
 
+function getActiveIdentity() {
+  var url = document.location.toString();
+  var match = url.match(/u\/[0-9]\/b\/([0-9]+)/);
+  return match && match[1];
+}
+
 function nuke(buttonFromComment, userId) {
     nukedPersonId = userId;
     commentDiv = findCommentDiv(buttonFromComment);
@@ -81,7 +85,7 @@ function block() {
     var userId = nukedPersonId;
     var destDiv = nukedTextDiv;
     destDiv.innerHTML = "Nuking...";
-    chrome.extension.sendRequest({'name': 'block', 'userId': userId}, function(response) {
+    chrome.extension.sendRequest({'name': 'block', 'userId': userId, 'activeIdentity': getActiveIdentity()}, function(response) {
         if (response.ok) {
             destDiv.innerHTML = "Nuked!";
         } else {
@@ -92,15 +96,15 @@ function block() {
 
 function report() {
     var userId = nukedPersonId;
-    chrome.extension.sendRequest({'name': 'report', 'userId': userId}, function() {});
+    chrome.extension.sendRequest({'name': 'report', 'userId': userId, 'activeIdentity': getActiveIdentity()}, function() {});
 }
 
 function deleteComment() {
     var id = commentId;
     var div = commentDiv;
-    chrome.extension.sendRequest({'name': 'deleteComment', 'commentId': id}, function(ok) {
+    chrome.extension.sendRequest({'name': 'deleteComment', 'commentId': id, 'activeIdentity': getActiveIdentity()}, function(ok) {
       if (ok) {
-        div.className += (" " + DELETED_COMMENT_CLASSNAME);
+        div.style.textDecoration = 'line-through';
       }
     });
 }
@@ -150,7 +154,8 @@ function displayFirstWhenSecondIsHovered(first, second) {
 }
 
 function processFooters(first) {
-        if (!selfId) {
+        var oid = getActiveIdentity() || selfId;
+        if (!oid) {
             chrome.extension.sendRequest({'name': 'getId'}, function(result) {
                 if (result.id) {
                     selfId = result.id;
@@ -160,10 +165,7 @@ function processFooters(first) {
             return;
         }
 
-
         var actions = document.body ? document.body.querySelectorAll(ACTION_SELECTOR + ":not([tz_nuke_a])") : [];
-
-        var oid = selfId;
 
         if (!actions || actions.length == 0) {
             // Less aggressive if idle
@@ -176,12 +178,13 @@ function processFooters(first) {
 
         for (var i = 0; i < actions.length; i++) {
             var action = actions[i];
-            action.setAttribute("tz_nuke_a", 1);
 
             // Only show nuke button on posts owned by the user.
-            if (!getPostOwnerUrl(action).match(oid)) {
+            if (!getPostOwnerUrl(action).replace(/b\/[0-9]+\//, '').match(oid)) {
                 continue;
             }
+
+            action.setAttribute("tz_nuke_a", 1);
 
             // Try to figure out what the author's name is
             var parent = action.parentElement;

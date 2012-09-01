@@ -7,6 +7,7 @@
 <script type="text/javascript" src="/background_controller.js"></script>
 <script>
   var INIT_REPEAT_INTERVAL = 3 * 60000;
+  var INIT_RETRY_INTERVAL = 5000;
 
   var _gaq = _gaq || [];
   _gaq.push(['_setAccount', 'UA-27041781-3']);
@@ -40,21 +41,28 @@
 </script>
 <script>
 
+function getApi(identityId) {
+  var api = apis[identityId];
+  if (!api) {
+    api = plus;
+  }
+  return api;
+}
+
+
 function onRequest(request, sender, callback) {
     var n = request.name;
     ok = true;
+    var api = getApi(request.activeIdentity);
     if (n == 'block') {
-        plus.modifyBlocked(function(ok) {
+        api.modifyBlocked(function(ok) {
           callback({'ok': ok});
           trackBlockSuccess(ok);
         }, [request.userId], true);
     } else if (n == 'getId') {
-        if (!plus.isAuthenticated()) {
-          plus.init(function(){});
-        }
-        var info = plus.getInfo();
+        var info = api.getInfo();
         if (info) {
-            callback({'id': plus.getInfo().id});
+            callback({'id': info.id});
         } else {
             callback({})
         }
@@ -63,12 +71,12 @@ function onRequest(request, sender, callback) {
     } else if (n == 'nukeClick') {
         trackNukeClick();
     } else if (n == 'report') {
-        plus.reportProfile(function(ok) {
+        api.reportProfile(function(ok) {
           callback({'ok': ok});
           trackReportSuccess(ok);
         }, request.userId);
     } else if (n == 'deleteComment') {
-        plus.deleteComment(function(ok) {
+        api.deleteComment(function(ok) {
           callback({'ok': ok});
           trackDeleteSuccess(ok);
         }, request.commentId);
