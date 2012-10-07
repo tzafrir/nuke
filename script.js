@@ -40,11 +40,14 @@ function extractProfile(profile) {
     return { profileLink: profile, profileName: profile.getAttribute('oid'), realName: profile.textContent };
 }
 
+function clickHandler(e) {
+  e.stopPropagation();
+  nuke(this, this.getAttribute('data-nukeId'));
+}
+
 function addClickListener(button, userId) {
-    button.addEventListener("click", function(e) {
-        e.stopPropagation();
-        nuke(button, userId);
-    }, false);
+    button.setAttribute('data-nukeId', userId);
+    button.addEventListener("click", clickHandler, false);
 }
 
 function findCommentDiv(element) {
